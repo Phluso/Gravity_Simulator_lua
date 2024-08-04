@@ -13,21 +13,15 @@ function love.load()
 
     id = 0
 
-    local radius = 300
-    for i = 0, 100, 1 do
+    local radius = 3000
+    for i = 0, 1000, 1 do
         local x = love.math.random() * love.graphics.getWidth()
         local y = love.math.random() * love.graphics.getHeight()
         local dist = distance(x, y, window.centerx, window.centery)
         local xspd = lenx(window.centerx, x, dist)
         local yspd = leny(window.centery, y, dist)
-        nBola(love.math.random() / 2, 
-        0 + xspd * love.math.random() * radius, 
-        0 + yspd * love.math.random() * radius, 
-        0, 
-        0
-    )
+        nBola(love.math.random() * 2, 0 + xspd * love.math.random() * radius, 0 + yspd * love.math.random() * radius, 0, 0)
     end
-    --nBola(400, window.centerx, window.centery, 0, 0)
 
     cam = {}
     cam.x = 0
@@ -71,10 +65,6 @@ function love.update(dt)
         simSpd = 0
     end
 
-    if (love.keyboard.isDown("lshift")) then
-        camSpd = camSpd * 10
-    end
-
     if (love.keyboard.isDown("space")) then
         simSpd = simSpd * 10
         if (love.keyboard.isDown("lshift")) then
@@ -103,6 +93,13 @@ function love.update(dt)
     precision = clamp(precision, 0, 1)
 
     --mover câmera
+    if (love.keyboard.isDown("lshift")) then
+        camSpd = camSpd * 10
+    end
+    if (love.keyboard.isDown("lctrl")) then
+        camSpd = camSpd / 5
+    end
+
     camSpd = camSpd * cam.zoom
     if (love.keyboard.isDown("a")) then
         cam.x = cam.x - camSpd * dt
@@ -124,7 +121,6 @@ function love.update(dt)
     if (love.keyboard.isDown("e")) then
         cam.zoom = cam.zoom - (cam.zoom / 2.5) * dt
     end
-
     cam.width = window.lar * cam.zoom
     cam.height = window.alt * cam.zoom
 
@@ -133,20 +129,17 @@ function love.update(dt)
     if (simSpd > 0) then                            --caso não esteja pausado
         for t = 0, simSpd, 1 do                     --repetir os cálculos de acordo com a velocidade da simulação
             for i, v in ipairs(bolas) do            --calcular para cada objeto
-                --remover objetos muito distantes da câmera
-                --if (v.x < -5000) or (v.x > 5000) or (v.y < -5000) or (v.y > 5000) then table.remove(bolas, i) end
-                if (i < maxInt) then                --limitar interações
-                    for j, u in ipairs(bolas) do    --calcular as interações
+                --remover se estiver muito longe do ponto inicial
+                if not(collision(v.x, v.y, -50000, -50000, 50000, 50000)) then table.remove(bolas, i) end
+                for j, u in ipairs(bolas) do        --calcular as interações
+                    if (j < maxInt) then            --limitar interações
                         if (v.fixed == nil or v.fixed == false) then
                             if (v.id ~= u.id) then  
-                                --local dist = distance(v.x, v.y, u.x, u.y)
-                                --v.xspd = v.xspd + (lenx(v.x, u.x, distance(v.x, v.y, u.x, u.y)) * u.massa / dist)
-                                --v.yspd = v.yspd + (leny(v.y, u.y, distance(v.x, v.y, u.x, u.y)) * u.massa / dist)
                                 local atracao = (u.massa * v.massa) / math.pow(distance(v.x, v.y, u.x, u.y), 2)
                                 v.xspd = v.xspd + lenx(v.x, u.x, distance(v.x, v.y, u.x, u.y)) * atracao
                                 v.yspd = v.yspd + leny(v.y, u.y, distance(v.x, v.y, u.x, u.y)) * atracao
                                 --colisão entre os planetas
-                                if (circleColision(v.x, v.y, u.x, u.y, u.volume)) then
+                                if (circleColision(v.x, v.y, u.x + (v.volume * sign(v.x - u.x)), u.y + (v.volume * sign(v.y - u.y)), u.volume)) then
                                     if (u.massa >= v.massa) then
                                         u.massa = u.massa + v.massa / 10
                                         table.remove(bolas, i)
@@ -173,25 +166,14 @@ function love.update(dt)
     end 
 
     --adcionar meteoros
-
     if (love.mouse.isDown(1)) then
-        local cw = window.lar / 2
-        local ch = window.alt / 2
+        cam.zoom = 1
 
-        local minx = 0 - cw
-        local maxx = 0 + cw
-        local miny = 0 - ch
-        local maxy = 0 + ch
+        local randx = (love.math.random() - .5) * 50
+        local randy = (love.math.random() - .5) * 50
 
-        local x = (mousex - minx) / (maxx - minx) - .5
-        local y = (mousey - miny) / (maxy - miny) - .5
-
-        local randx = (love.math.random() - .5) * 5
-        local randy = (love.math.random() - .5) * 5
-
-        nBola(.1, x * window.lar + randx + cam.x - cam.width / 2, y * window.alt + randy + cam.y - cam.height / 2, 0, 0)
+        nBola(.3, mousex - (cam.width / 2) + cam.x + randx, mousey - (cam.height / 2) + cam.y + randy, 0, 0)
     end 
-
     if (love.mouse.isDown(2)) then
         if (placingObject == false) then
             placingObject = true
@@ -199,55 +181,57 @@ function love.update(dt)
             mira.iniY = mousey
         end
     end
-
     if (placingObject == true) then
         pause = true
+
+        cam.zoom = 1
 
         local dist = distance(mira.iniX, mira.iniY, mousex, mousey)
 
         mira.x = mira.iniX + lenx(mousex, mira.iniX, dist)
         mira.y = mira.iniY + leny(mousey, mira.iniY, dist)
 
+        local fixed = false
+
+        if (dist <= 1) then
+            fixed = true
+        end
+
         if not(love.mouse.isDown(2)) then
-            local x = mousex + cam.x
-            local y = mousey + cam.y
-            nBola(mass, x, y, lenx(mousex, mira.iniX, dist) * dist / 2, leny(mousey, mira.iniY, dist) * dist / 2)
+            local xspd = clamp(lenx(mousex, mira.iniX, dist) * dist / 2, -100, 100)
+            local yspd = clamp(leny(mousey, mira.iniY, dist) * dist / 2, -100, 100)
+            nBola(mass, mousex - (cam.width / 2) + cam.x, mousey - (cam.height / 2) + cam.y, xspd, yspd, fixed)
             pause = false
             placingObject = false
         end
     end
+
+    --limitar posição da câmera
+    cam.x = clamp(cam.x, -50000, 50000)
+    cam.y = clamp(cam.y, -50000, 50000)
 end
 
 function love.draw()
 
-    --desenhar planetas
+    local cw = cam.width / 2
+    local ch = cam.height / 2
+
+    local minx = cam.x - cw
+    local maxx = cam.x + cw
+    local miny = cam.y - ch
+    local maxy = cam.y + ch
+
+    --desenhar objetos
     for i, v in ipairs(bolas) do
 
-        local cw = cam.width / 2
-        local ch = cam.height / 2
-
-        local minx = cam.x - cw
-        local maxx = cam.x + cw
-        local miny = cam.y - ch
-        local maxy = cam.y + ch
-
+        --calcular posição na tela
         local x = (v.x - minx) / (maxx - minx)
         local y = (v.y - miny) / (maxy - miny)
-        if (collision(v.x, v.y, cam.x - cw, cam.y - ch, cam.x + cw, cam.y + ch)) then
-            love.graphics.setColor(v.cor.r, v.cor.g, v.cor.b, 1)
 
-            love.graphics.circle("fill", x * window.lar, y * window.alt, v.volume / cam.zoom) 
-            --love.graphics.circle("fill", v.x, v.y, v.volume / cam.zoom) 
-        end
-        --love.graphics.print(x, v.x, v.y)
-        --love.graphics.print(x, v.x, v.y)
-        --love.graphics.print(cam.x + cam.width, cam.x + cam.width, cam.y + cam.height)
-
-        --verificar se está dentro da área da câmera (opcional)
-        --calcular a posição normalizada em relação a área da câmera (0-1)
-        --desenhar na posição normalizada multiplicada pelas dimensões da tela
+        love.graphics.setColor(v.cor.r, v.cor.g, v.cor.b, 1)
+        love.graphics.circle("fill", x * window.lar, y * window.alt, v.volume / cam.zoom) 
     end
-
+    
     --desenhar mira
     if (placingObject == true) then
         love.graphics.setColor(1, 1, 1, 1)
@@ -263,23 +247,6 @@ function love.draw()
     love.graphics.print("Coordinates: " .. tostring(round(cam.x)) .. " x " .. tostring(round(cam.y)), 10, 90)
     love.graphics.print("Camera Zoom: " .. tostring(cam.zoom), 10, 110)
     love.graphics.print("Current mass: " .. tostring(mass), 10, 130)
-
-    --love.graphics.rectangle("line", cam.x - cam.width / 2, cam.y - cam.height / 2, cam.width, cam.height)
-    --love.graphics.circle("line", cam.x, cam.y, 10)
-
-    --love.graphics.print(cursor.x, 100, 10)
-    --love.graphics.print(mousex, 100, 30)
-    local cw = window.lar / 2
-    local ch = window.alt / 2
-    local minx = 0 - cw
-    local maxx = 0 + cw
-    local miny = 0 - ch
-    local maxy = 0 + ch
-    local seila = (mousex - minx) / (maxx - minx) - .5
-    love.graphics.print((seila * window.lar + cam.x) * cam.zoom, mousex, mousey - 30)
-
-
-
 end
 
 function nBola(massa, x, y, xspd, yspd, fixed)
@@ -308,48 +275,48 @@ end
 
 function bolaSpecs(index)
     --calcular massa e tipo do corpo celeste
-    if (index.massa >= 1024) then
+    if (index.massa >= 512) then
         index.tipo = "buraco negro"
-        index.cor.r = .1
-        index.cor.g = .1
-        index.cor.b = .1
-        index.densidade = 255
-    elseif (index.massa >= 700) then
+        index.cor.r = .3
+        index.cor.g = .3
+        index.cor.b = .3
+        index.densidade = 512
+    elseif (index.massa >= 400) then
         index.tipo = "anã branca"
         index.cor.r = 1
         index.cor.g = 1
         index.cor.b = 1
-        index.densidade = 10
-    elseif (index.massa >= 600) then
+        index.densidade = 512
+    elseif (index.massa >= 250) then
         index.tipo = "gigante azul"
         index.cor.r = .15
         index.cor.g = .15
         index.cor.b = 1
-        index.densidade = .35
-    elseif (index.massa >= 500) then
+        index.densidade = .7
+    elseif (index.massa >= 200) then
         index.tipo = "gigante vermelha"
         index.cor.r = 1
         index.cor.g = .25
         index.cor.b = 0
-        index.densidade = .4
-    elseif (index.massa >= 300) then
+        index.densidade = .8
+    elseif (index.massa >= 100) then
         index.tipo = "estrela"
         index.cor.r = 1
         index.cor.g = 1
         index.cor.b = 0
         index.densidade = .6
-    elseif (index.massa >= 110) then
+    elseif (index.massa >= 50) then
         index.tipo = "anã marrom"
         index.cor.r = .5
         index.cor.g = .25
         index.cor.b = .25
-        index.densidade = .75
-    elseif (index.massa >= 30) then
+        index.densidade = 1.5
+    elseif (index.massa >= 25) then
         index.tipo = "planeta gasoso"
         index.cor.r = .75
         index.cor.g = .5
         index.cor.b = .25
-        index.densidade = .5
+        index.densidade = .8
     elseif (index.massa >= 1) then
         index.tipo = "planeta rochoso"
         index.cor.r = .2
