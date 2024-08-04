@@ -14,15 +14,15 @@ function love.load()
     id = 0
 
     local radius = 300
-    for i = 0, 1000, 1 do
+    for i = 0, 100, 1 do
         local x = love.math.random() * love.graphics.getWidth()
         local y = love.math.random() * love.graphics.getHeight()
         local dist = distance(x, y, window.centerx, window.centery)
         local xspd = lenx(window.centerx, x, dist)
         local yspd = leny(window.centery, y, dist)
         nBola(love.math.random() / 2, 
-        window.centerx + xspd * love.math.random() * radius, 
-        window.centery + yspd * love.math.random() * radius, 
+        0 + xspd * love.math.random() * radius, 
+        0 + yspd * love.math.random() * radius, 
         0, 
         0
     )
@@ -32,13 +32,21 @@ function love.load()
     cam = {}
     cam.x = 0
     cam.y = 0
+    cam.width = window.lar / 3
+    cam.height = window.alt / 3
     cam.zoom = 1
+
+    cursor = {}
+    cursor.x = 0
+    cursor.y = 0
 
     --simulation precision (0-1)
     precision = 1
 
     --initial simulation speed
     simSpd = 1
+
+    mass = 10
 
     placingObject = false
     mira = {}
@@ -82,33 +90,43 @@ function love.update(dt)
         precision = precision - .01
     end
 
+    --aumentar massa
+    if (love.keyboard.isDown("up")) then
+        mass = mass + 128 * dt
+    end
+    if (love.keyboard.isDown("down")) then
+        mass = mass - 128 * dt
+    end
+
+    mass = clamp(mass, .1, 1024)
+
     precision = clamp(precision, 0, 1)
 
     --mover câmera
+    camSpd = camSpd * cam.zoom
     if (love.keyboard.isDown("a")) then
-        cam.x = cam.x + camSpd * dt
-    end
-    if (love.keyboard.isDown("d")) then
         cam.x = cam.x - camSpd * dt
     end
+    if (love.keyboard.isDown("d")) then
+        cam.x = cam.x + camSpd * dt
+    end
     if (love.keyboard.isDown("w")) then
-        cam.y = cam.y + camSpd * dt
+        cam.y = cam.y - camSpd * dt
     end
     if (love.keyboard.isDown("s")) then
-        cam.y = cam.y - camSpd * dt
+        cam.y = cam.y + camSpd * dt
     end
 
     --zoom
     if (love.keyboard.isDown("q")) then
         cam.zoom = cam.zoom + (cam.zoom / 2.5) * dt
-        --cam.x = cam.x / window.centerx - cam.zoom / 2.5
-        --cam.y = cam.y / window.centery - cam.zoom / 2.5
     end
     if (love.keyboard.isDown("e")) then
         cam.zoom = cam.zoom - (cam.zoom / 2.5) * dt
-        --cam.x = cam.x / window.centerx + cam.zoom / 2.5
-        --cam.y = cam.y / window.centery + cam.zoom / 2.5
     end
+
+    cam.width = window.lar * cam.zoom
+    cam.height = window.alt * cam.zoom
 
     --calcular interações dos planetas
     local maxInt = #bolas * precision + 1
@@ -155,10 +173,15 @@ function love.update(dt)
     end 
 
     --adcionar meteoros
+
     if (love.mouse.isDown(1)) then
         local randx = (love.math.random() - .5) * 5
         local randy = (love.math.random() - .5) * 5
-        nBola(.7, (mousex - cam.x) * cam.zoom + randx, (mousey - cam.y) * cam.zoom + randy, 0, 0)
+
+        local x = (mousex - cam.x) / ((cam.x + cam.width) - cam.x)
+        local y = (mousey - cam.y) / ((cam.y + cam.height) - cam.y)
+
+        nBola(.3, x * window.lar + randx, y * window.alt + randy, 0, 0)
     end 
 
     if (love.mouse.isDown(2)) then
@@ -178,9 +201,9 @@ function love.update(dt)
         mira.y = mira.iniY + leny(mousey, mira.iniY, dist)
 
         if not(love.mouse.isDown(2)) then
-            local x = (mousex - cam.x) * cam.zoom
-            local y = (mousey - cam.y) * cam.zoom
-            nBola(3, x, y, lenx(mousex, mira.iniX, dist) * dist / 2, leny(mousey, mira.iniY, dist) * dist / 2)
+            local x = mousex + cam.x
+            local y = mousey + cam.y
+            nBola(mass, x, y, lenx(mousex, mira.iniX, dist) * dist / 2, leny(mousey, mira.iniY, dist) * dist / 2)
             pause = false
             placingObject = false
         end
@@ -191,22 +214,32 @@ end
 
 function love.draw()
 
-    --desenhar grade
-    love.graphics.setColor(1, 1, 1, .25)
-    local n = cam.zoom * 10
-    for i = 0, n, 1 do
-        love.graphics.line(i * (window.lar / n) + cam.x, 0 + cam.y / cam.zoom, i * (window.lar / n) + cam.x, window.alt)
-        love.graphics.line(0 + cam.y / cam.zoom, i * (window.alt / n) + cam.y, window.lar, i * (window.alt / n) + cam.y)
-    end
-
     --desenhar planetas
     for i, v in ipairs(bolas) do
-        love.graphics.setColor(v.cor.r, v.cor.g, v.cor.b, 1)
-        love.graphics.circle("fill", v.x / cam.zoom + cam.x, v.y / cam.zoom + cam.y, v.volume / cam.zoom)
-        love.graphics.setColor(1, 1, 1, 1)
 
-        --love.graphics.print(distance(v.x, v.y, v.x + v.xspd, v.y + v.yspd), v.x / cam.zoom + cam.x, v.y / cam.zoom + cam.y)
-        --love.graphics.line(v.x / cam.zoom + cam.x, v.y / cam.zoom + cam.y, v.x / cam.zoom + cam.x + v.xspd, v.y / cam.zoom + cam.y + v.yspd)
+        local cw = cam.width / 2
+        local ch = cam.height / 2
+
+        local minx = cam.x - cw
+        local maxx = cam.x + cw
+        local miny = cam.y - ch
+        local maxy = cam.y + ch
+
+        local x = (v.x - minx) / (maxx - minx)
+        local y = (v.y - miny) / (maxy - miny)
+        if (collision(v.x, v.y, cam.x - cw, cam.y - ch, cam.x + cw, cam.y + ch)) then
+            love.graphics.setColor(v.cor.r, v.cor.g, v.cor.b, 1)
+
+            love.graphics.circle("fill", x * window.lar, y * window.alt, v.volume / cam.zoom) 
+            --love.graphics.circle("fill", v.x, v.y, v.volume / cam.zoom) 
+        end
+        --love.graphics.print(x, v.x, v.y)
+        --love.graphics.print(x, v.x, v.y)
+        --love.graphics.print(cam.x + cam.width, cam.x + cam.width, cam.y + cam.height)
+
+        --verificar se está dentro da área da câmera (opcional)
+        --calcular a posição normalizada em relação a área da câmera (0-1)
+        --desenhar na posição normalizada multiplicada pelas dimensões da tela
     end
 
     --desenhar mira
@@ -223,6 +256,15 @@ function love.draw()
     love.graphics.print("Simulation Precision: " .. tostring(precision * 100) .. "%", 10, 70)
     love.graphics.print("Coordinates: " .. tostring(round(cam.x)) .. " x " .. tostring(round(cam.y)), 10, 90)
     love.graphics.print("Camera Zoom: " .. tostring(cam.zoom), 10, 110)
+    love.graphics.print("Current mass: " .. tostring(mass), 10, 130)
+
+    --love.graphics.rectangle("line", cam.x - cam.width / 2, cam.y - cam.height / 2, cam.width, cam.height)
+    --love.graphics.circle("line", cam.x, cam.y, 10)
+
+    --love.graphics.print(cursor.x, 100, 10)
+    --love.graphics.print(mousex, 100, 30)
+
+
 
 
 end

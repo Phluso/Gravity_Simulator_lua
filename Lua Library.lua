@@ -49,6 +49,10 @@ function distance(x1, y1, x2, y2)
     return math.sqrt((ct1 * ct1) + (ct2 * ct2)) --hipotenusa
 end
 
+function collision(x, y, x1, y1, x2, y2)
+    if (x >= x1) and (x <= x2) and (y >= y1) and (y <= y2) then return true else return false end
+end
+
 function circleColision(x, y, circlex, circley, radius)
     if (distance(x, y, circlex, circley) <= radius) then
         return true
