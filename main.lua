@@ -175,13 +175,21 @@ function love.update(dt)
     --adcionar meteoros
 
     if (love.mouse.isDown(1)) then
+        local cw = window.lar / 2
+        local ch = window.alt / 2
+
+        local minx = 0 - cw
+        local maxx = 0 + cw
+        local miny = 0 - ch
+        local maxy = 0 + ch
+
+        local x = (mousex - minx) / (maxx - minx) - .5
+        local y = (mousey - miny) / (maxy - miny) - .5
+
         local randx = (love.math.random() - .5) * 5
         local randy = (love.math.random() - .5) * 5
 
-        local x = (mousex - cam.x) / ((cam.x + cam.width) - cam.x)
-        local y = (mousey - cam.y) / ((cam.y + cam.height) - cam.y)
-
-        nBola(.3, x * window.lar + randx, y * window.alt + randy, 0, 0)
+        nBola(.1, x * window.lar + randx + cam.x - cam.width / 2, y * window.alt + randy + cam.y - cam.height / 2, 0, 0)
     end 
 
     if (love.mouse.isDown(2)) then
@@ -208,8 +216,6 @@ function love.update(dt)
             placingObject = false
         end
     end
-
-
 end
 
 function love.draw()
@@ -263,7 +269,14 @@ function love.draw()
 
     --love.graphics.print(cursor.x, 100, 10)
     --love.graphics.print(mousex, 100, 30)
-
+    local cw = window.lar / 2
+    local ch = window.alt / 2
+    local minx = 0 - cw
+    local maxx = 0 + cw
+    local miny = 0 - ch
+    local maxy = 0 + ch
+    local seila = (mousex - minx) / (maxx - minx) - .5
+    love.graphics.print((seila * window.lar + cam.x) * cam.zoom, mousex, mousey - 30)
 
 
 
