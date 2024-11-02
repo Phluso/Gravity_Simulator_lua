@@ -31,16 +31,7 @@ function love.load()
     nBola(20, 0, 20000, 11.85, 0)
 
     
-    cam = {}
-    cam.x = 0
-    cam.y = 0
-    cam.width = window.lar / 3
-    cam.height = window.alt / 3
-    cam.zoom = .025
-
-    cursor = {}
-    cursor.x = 0
-    cursor.y = 0
+    cam = newCamera(0, 0, window.lar / 3, window.alt / 3, .025)
 
     --simulation precision (0-1)
     precision = 1
@@ -270,14 +261,15 @@ function love.update(dt)
     time = time + dt * 100 * simSpd
 end
 
-function love.draw()
 
-    --desenhar grade
-    --[[local nx = window.lar / 10
-    love.graphics.setColor(1, 1, 1, .2)
-    for i = -5000, 5000, 1000 do
-        love.graphics.line(i * cam.zoom - cam.x, 0, i * cam.zoom - cam.x, window.alt)
-    end]]
+--[[ DESENHAR ]] -- /////////////////////////////////////////////////////////////////////////////////////
+--[[ DESENHAR ]] -- /////////////////////////////////////////////////////////////////////////////////////
+--[[ DESENHAR ]] -- /////////////////////////////////////////////////////////////////////////////////////
+--[[ DESENHAR ]] -- /////////////////////////////////////////////////////////////////////////////////////
+--[[ DESENHAR ]] -- /////////////////////////////////////////////////////////////////////////////////////
+
+
+function love.draw()
 
     local cw = cam.width / 2
     local ch = cam.height / 2
@@ -291,17 +283,17 @@ function love.draw()
     for i, v in ipairs(bolas) do
 
         --calcular posição na tela
-        local x = (v.x - minx) / (maxx - minx) * window.lar
-        local y = (v.y - miny) / (maxy - miny) * window.alt
+        local x = normal(v.x, minx, maxx) * window.lar
+        local y = normal(v.y, miny, maxy) * window.alt
 
         love.graphics.setColor(1, 1, 1, .3)
 
         for t = 2, #v.tailX, 1 do
-            local tx1 = (v.tailX[t] - minx) / (maxx - minx) * window.lar
-            local ty1 = (v.tailY[t] - miny) / (maxy - miny) * window.alt
+            local tx1 = normal(v.tailX[t], minx, maxx) * window.lar
+            local ty1 = normal(v.tailY[t], miny, maxy) * window.alt
 
-            local tx2 = (v.tailX[t-1] - minx) / (maxx - minx) * window.lar
-            local ty2 = (v.tailY[t-1] - miny) / (maxy - miny) * window.alt
+            local tx2 = normal(v.tailX[t -1], minx, maxx) * window.lar
+            local ty2 = normal(v.tailY[t -1], miny, maxy) * window.alt
             --desenhar rastro
             love.graphics.line(tx1, ty1, tx2, ty2)
         end

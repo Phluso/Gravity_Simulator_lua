@@ -68,3 +68,25 @@ end
 function leny(y1, y2, distance)
     return (y2 - y1) / distance
 end
+
+function normal(n, min, max)
+    -- return a normalized value between 0 to 1
+
+    return (n - min) / (max - min)
+end
+
+function newCamera(x, y, width, height, zoom)
+    -- create a camera that is stored in a variable
+    local camera = {}
+    camera.x        = x         or 0
+    camera.y        = y         or 0
+    camera.width    = width     or 720
+    camera.height   = height    or 360
+    camera.zoom     = zoom      or 1
+
+    return camera
+end
+
+function drawInCamera(object, camera)
+    -- draw a object or a list of objects in the screen with a position relative to the camera
+end
