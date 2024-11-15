@@ -87,6 +87,13 @@ function newCamera(x, y, width, height, zoom)
     return camera
 end
 
+function mouseToCamera(camera)
+    -- return the mouse position relative to the camera
+    local mouse = {}
+    mouse.x = ((love.mouse.getX()) / (window.lar) - .5) * cam.width + cam.x
+    mousey = ((love.mouse.getY()) / (window.alt) - .5) * cam.height + cam.y
+end
+
 function drawInCamera(object, camera)
     -- draw a object or a list of objects in the screen with a position relative to the camera
 end

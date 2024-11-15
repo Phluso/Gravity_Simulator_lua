@@ -220,7 +220,7 @@ function love.update(dt)
         local randx = (love.math.random() - .5) * 50 / cam.zoom
         local randy = (love.math.random() - .5) * 50 / cam.zoom
 
-        nBola(.02, mousex + randx, mousey + randy, 0, 0)
+        nBola(.1, mousex + randx, mousey + randy, 0, 0)
     end 
     if (love.mouse.isDown(2)) then
         if (placingObject == false) then
