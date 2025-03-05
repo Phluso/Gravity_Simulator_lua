@@ -1,37 +1,59 @@
 require "Lua Library"
+require "Menu lib"
+require "Objects"
 
 function love.load()
     love.window.setFullscreen(true)
 
-    window = {}
-    window.lar = love.graphics.getWidth()
-    window.alt = love.graphics.getHeight()
-    window.centerx = love.graphics.getWidth() / 2
-    window.centery = love.graphics.getHeight() / 2
+    shader = love.graphics.newShader("frag.frag", "vert.vert")
+    canvas = love.graphics.newCanvas(love.graphics.getWidth(), love.graphics.getHeight())
 
-    bolas = {}
+    window = {
+        lar = love.graphics.getWidth(),
+        alt = love.graphics.getHeight(),
+        centerx = love.graphics.getWidth() / 2,
+        centery = love.graphics.getHeight() / 2
+    }
+
+    menu = Menu:create(window.lar - 230, 0, 230, 600)
+    rastro = Menu:checkbox(true)
+    evolucaoEstelar = Menu:checkbox(false)
+    precisionRange = Menu:range(0, 100, 10)
+    menu:addRow({Menu:label("Opções")})
+    menu:addRow({Menu:label("Exibir rastro:"), rastro})
+    menu:addRow({Menu:label("Fusão nuclear nas estrelas:"), evolucaoEstelar})
+    --[[massRadio = Menu:radio({{"Buraco negro", Objects:newBlackHole},
+    {"Anã Branca", Objects:newWhiteDwarf},
+    {"Gigante azul", Objects:newBlueGiant},
+    {"Gigante vermelha", Objects:newRedGiant},
+    {"Estrela", Objects:newStar},
+    {"Planeta", Objects:newWhiteDwarf}})
+
+    menu:addRow({massRadio.option[1].label, massRadio.option[1]})
+    menu:addRow({massRadio.option[2].label, massRadio.option[2]})
+    menu:addRow({massRadio.option[3].label, massRadio.option[3]})
+    menu:addRow({massRadio.option[4].label, massRadio.option[4]})
+    menu:addRow({massRadio.option[5].label, massRadio.option[5]})
+    menu:addRow({massRadio.option[6].label, massRadio.option[6]})]]
+
+    speedRadio = Menu:radio({{"1x", 1}, {"2x", 2}, {"10x", 10}, {"100x", 100}, {"1000x", 1000}, {"10000x", 10000}})
+    menuSimulacao = Menu:create(window.lar/2 - 400, 20, 800, 120)
+    menuSimulacao:addRow({Menu:label("Precisão:"), precisionRange})
+    menuSimulacao:addRow({Menu:label("Velocidade:"), speedRadio.option[1], speedRadio.option[2], speedRadio.option[3], speedRadio.option[4], speedRadio.option[5], speedRadio.option[6]})
+
+    naveMenu = Menu:create(0, window.alt - 400, 250)
+    naveMenu:addRow({Menu:label("Direção automática da nave")})
+    direcaoNave = Menu:radio({{"Manual", 0}, {"Prograde", 1}, {"Retrograde", 2}})
+    naveMenu:addRow({direcaoNave.option[1], direcaoNave.option[2], direcaoNave.option[3]})
+
+    Objects.list = {}
 
     id = 0
 
-    --nBola(4096, 0, 0, 0, 0)
+    Objects:newPlanet(0, 0, 0, 0)
+    Objects:newSpaceship(500, 500)
 
-    --[[local radius = 50000
-    for i = 0, 500, 1 do
-        local x = love.math.random() * love.graphics.getWidth()
-        local y = love.math.random() * love.graphics.getHeight()
-        local dist = distance(x, y, window.centerx, window.centery)
-        local xspd = lenx(window.centerx, x, dist)
-        local yspd = leny(window.centery, y, dist)
-        nBola(80, xspd * love.math.random() * radius, 0 + yspd * love.math.random() * radius, 0, 0)
-    end]]
-    nBola(80, 0, 0, 0, 0, false)
-    nBola(1, 0, 500, 3.61, 0)
-    nBola(2, 0, 1500, 4.2, 0)
-    nBola(15, 0, 10000, 11.85, 0)
-    nBola(20, 0, 20000, 11.85, 0)
-
-    
-    cam = newCamera(0, 0, window.lar / 3, window.alt / 3, .025)
+    cam = newCamera(0, 0, window.lar / 3, window.alt / 3, 1)
 
     --simulation precision (0-1)
     precision = 1
@@ -42,11 +64,12 @@ function love.load()
     mass = 80
 
     placingObject = false
-    mira = {}
-    mira.x = 0
-    mira.y = 0
-    mira.iniX = 0
-    mira.iniY = 0
+    mira = {
+        x = 0,
+        y = 0,
+        iniX = 0,
+        iniY = 0
+    }
 
     pause = false
 
@@ -60,42 +83,37 @@ function love.load()
 end
 
 function love.update(dt)
+    menu:update()
+    menuSimulacao:update()
+    naveMenu:update()
 
     --coordenadas do mouse em relação ao mundo, não a tela
     mousex = ((love.mouse.getX()) / (window.lar) - .5) * cam.width + cam.x
     mousey = ((love.mouse.getY()) / (window.alt) - .5) * cam.height + cam.y
 
     local camSpd = 200
-    
+
     --velocidade da simulação
     if (pause == false) then
-        simSpd = 1
+        simSpd = speedRadio.value
     else
         simSpd = 0
     end
-
+    
     if (love.keyboard.isDown("space")) then
-        simSpd = simSpd * 10
+        speedRadio.selected = 2
+        speedRadio.value = speedRadio.option[2].value
         if (love.keyboard.isDown("lshift")) then
-            simSpd = simSpd * 100
+            speedRadio.selected = 3
+            speedRadio.value = speedRadio.option[3].value
         end
     end
 
-    --aumentar precisão
-    if (love.keyboard.isDown("right")) then
-        precision = precision + .01
-    end
-    if (love.keyboard.isDown("left")) then
-        precision = precision - .01
-    end
+    --alterar precisão
+    precision = precisionRange.value/100
 
-    --aumentar massa
-    if (love.keyboard.isDown("up")) then
-        mass = mass + 128 * dt
-    end
-    if (love.keyboard.isDown("down")) then
-        mass = mass - 128 * dt
-    end
+    --alterar massa
+    --mass = massRadio.value
 
     mass = clamp(mass, .1, 1024)
 
@@ -110,27 +128,17 @@ function love.update(dt)
     end
     camSpd = camSpd / cam.zoom
 
-    if (love.keyboard.isDown("a")) then
-        cam.x = cam.x - camSpd * dt
-        seguindo.id = nil
-    end
-    if (love.keyboard.isDown("d")) then
-        cam.x = cam.x + camSpd * dt
-        seguindo.id = nil
-    end
-    if (love.keyboard.isDown("w")) then
-        cam.y = cam.y - camSpd * dt
-        seguindo.id = nil
-    end
-    if (love.keyboard.isDown("s")) then
-        cam.y = cam.y + camSpd * dt
+    local camMov = {
+        x = (boolToInt(love.keyboard.isDown("d")) - boolToInt(love.keyboard.isDown("a"))) * camSpd * dt,
+        y = (boolToInt(love.keyboard.isDown("s")) - boolToInt(love.keyboard.isDown("w"))) * camSpd * dt
+    }
+
+    if (camMov.x ~= 0 or camMov.y ~= 0) then 
         seguindo.id = nil
     end
 
-    if (seguindo.id ~= nil) then
-        cam.x = seguindo.id.x
-        cam.y = seguindo.id.y
-    end
+    cam.x = cam.x + camMov.x
+    cam.y = cam.y + camMov.y
 
     --zoom
     if (love.keyboard.isDown("q")) then
@@ -139,61 +147,96 @@ function love.update(dt)
     if (love.keyboard.isDown("e")) then
         cam.zoom = cam.zoom + (cam.zoom / 2.5) * dt
     end
-    cam.zoom = clamp(cam.zoom, 0, 100)
+    cam.zoom = clamp(cam.zoom, 0, 10000)
     cam.width = window.lar / cam.zoom
     cam.height = window.alt / cam.zoom
 
     --+------------+
     --|INTERACTIONS|
     --+------------+
-    local maxInt = #bolas * precision + 1
-    for t = 0, simSpd, 1 do                     --repetir os cálculos de acordo com a velocidade da simulação
-        for i, v in ipairs(bolas) do            --calcular para cada objeto
-            --seguir
-            if (love.mouse.isDown(3)) then
-                if (circleColision(mousex, mousey, v.x, v.y, (v.massa / v.densidade * 3.14) * cam.zoom)) then
-                    seguindo.id = v
-                end
-            end
-            if (simSpd > 0) then                --calcular interações somente caso não esteja pausado
-            --adcionar posição nas arrays de rastro
-            v.tailTime = v.tailTime - dt
-            if (v.tailTime <= 0) then
-                if (#v.tailX < 300) then
-                    --adicionar posição atual
-                    table.insert(v.tailX, v.x)
-                    table.insert(v.tailY, v.y)
+
+    if (simSpd > 0) then                --calcular interações somente caso não esteja pausado
+        for t = 0, simSpd, 1 do                     --repetir os cálculos de acordo com a velocidade da simulação
+            for i, v in ipairs(Objects.list) do            --calcular para cada objeto
+                --adcionar posição nas arrays de rastro
+                if (rastro.value == true) then
+                    v.tailTime = v.tailTime - dt
                 else
-                    --remover primeiro indice
-                    table.remove(v.tailX, 1)
-                    table.remove(v.tailY, 1)
-                    --adicionar posição atual
-                    table.insert(v.tailX, v.x)
-                    table.insert(v.tailY, v.y)
+                    v.tailX = {}
+                    v.tailY = {}
                 end
-                v.tailTime = 10
-            end
-            --alterar a densidade no caso de estrelas
-            if (v.tipo == "estrela madura" or v.tipo == "gigante vermelha" or v.tipo == "gigante azul") then
-                v.densidade = v.densidade - .00001 * dt
-            end
-            bolaSpecs(v)
-            --remover se estiver muito longe do ponto inicial
-                if not(collision(v.x, v.y, -500000, -500000, 500000, 500000)) then table.remove(bolas, i) end
-                for j, u in ipairs(bolas) do        --calcular as interações
-                    if (j < maxInt) then            --limitar interações
-                        if (v.fixed == nil or v.fixed == false) then
+                if (v.tailTime <= 0) then
+                    if (#v.tailX < 300) then
+                        --adicionar posição atual
+                        table.insert(v.tailX, v.x)
+                        table.insert(v.tailY, v.y)
+                    else
+                        --remover primeiro indice
+                        table.remove(v.tailX, 1)
+                        table.remove(v.tailY, 1)
+                        --adicionar posição atual
+                        table.insert(v.tailX, v.x)
+                        table.insert(v.tailY, v.y)
+                    end
+                    v.tailTime = 10
+                end
+                --alterar a densidade no caso de estrelas
+                if (v.nuclearFusion == true) and (evolucaoEstelar.value == true) then
+                    v.temperature = v.temperature + .01 * dt
+                    v:specs()
+                end
+                
+                --remover se estiver muito longe do ponto inicial
+                if not(collision(v.x, v.y, -500000, -500000, 500000, 500000)) then
+                    table.remove(Objects.list, i) 
+                end
+                for j, u in ipairs(Objects.list) do        --calcular as interações
+                    if (v.fixed == false) then
+                        if (math.random() <= precision) then  --limitar interações
                             if (v.id ~= u.id) then  
                                 local atracao = (u.massa * v.massa) / math.pow(distance(v.x, v.y, u.x, u.y), 2)
                                 v.xspd = v.xspd + lenx(v.x, u.x, distance(v.x, v.y, u.x, u.y)) * atracao
                                 v.yspd = v.yspd + leny(v.y, u.y, distance(v.x, v.y, u.x, u.y)) * atracao
-                                --colisão entre os objetos
-                                local vvolume = (v.massa / v.densidade * 3.14)
-                                local uvolume = (u.massa / u.densidade * 3.14)
-                                if (circleColision(v.x + v.xspd, v.y + v.yspd, u.x + u.xspd + (vvolume * sign(v.x - u.x)), u.y + u.yspd + (vvolume * sign(v.y - u.y)), uvolume)) then
-                                    if (u.massa >= v.massa) then
-                                        u.massa = u.massa + v.massa
-                                        table.remove(bolas, i)
+--colisões
+                                if (u.tipo ~= "nebulosa") then
+                                    local vvolume = (v.massa / v.densidade * 3.14)
+                                    local uvolume = (u.massa / u.densidade * 3.14)
+                                    if (twoCircleCollision(v.x, v.y, u.x, u.y, vvolume, uvolume)) then
+                                        if (u.massa >= v.massa) then
+                                            u.massa = u.massa + v.massa
+                                            u.atmosfera = u.atmosfera + v.atmosfera
+                                            --remove objeto menos massivo da lista
+                                            table.remove(Objects.list, i)
+                                            u:specs()
+                                            --calcula a velocidade do objeto que sobrou
+                                            u.xspd = (u.massa * u.xspd + v.massa * v.xspd) / (u.massa + v.massa) 
+                                            u.yspd = (u.massa * u.xspd + v.massa * v.xspd) / (u.massa + v.massa) 
+                                        end
+                                    end
+                                else
+--interações com nebulosas
+                                    local vvolume = ((v.massa + v.atmosfera) / v.densidade * 3.14)
+                                    local uvolume = (u.atmosfera / u.densidade * 3.14)
+
+                                    if (twoCircleCollision(v.x, v.y, u.x, u.y, vvolume, uvolume)) then
+                                        --incrementar a atmosfera ou a massa do objeto dentro da nebulosa
+                                        if (v.atmosfera >= 0) then
+                                            v.atmosfera = v.atmosfera + (u.atmosfera * v.massa/100)
+                                        else
+                                            v.massa = v.massa + (u.atmosfera * v.massa/100000)
+                                        end
+                                        --alterar a cor
+                                        v.atmosphereColor.r = lerp(v.atmosphereColor.r, u.atmosphereColor.r, .01)
+                                        v.atmosphereColor.g = lerp(v.atmosphereColor.g, u.atmosphereColor.g, .01)
+                                        v.atmosphereColor.b = lerp(v.atmosphereColor.b, u.atmosphereColor.b, .01)
+                                        if (v.tipo ~= "Nave espacial") then
+                                            v:specs()
+                                        end
+                                        --decrementar a atmosfera da nebulosa
+                                        u.atmosfera = u.atmosfera - (u.atmosfera * v.massa/100000)
+                                        if (u.atmosfera <= .001) then
+                                            table.remove(Objects.list, j)
+                                        end
                                     end
                                 end
                             end
@@ -207,49 +250,69 @@ function love.update(dt)
         end
     end
 
-    --resetar
-    if (love.keyboard.isDown("tab")) then
-        for i = 0, #bolas, 1 do
-            bolas[i] = nil
-        end
-    end 
+    --mover a câmera para seguir o alvo
+    if (seguindo.id ~= nil) then
+        cam.x = seguindo.id.x
+        cam.y = seguindo.id.y
 
-    --adcionar meteoros
-    if (love.mouse.isDown(1)) then
+        if (seguindo.id.tipo == "Nave espacial") then
+            seguindo.id.direction = seguindo.id.direction + (boolToInt(love.keyboard.isDown("right")) - boolToInt(love.keyboard.isDown("left"))) * seguindo.id.rotationSpeed * dt
+            seguindo.id.xspd = seguindo.id.xspd + math.cos(seguindo.id.direction) * boolToInt(love.keyboard.isDown("up")) * seguindo.id.acceleration * simSpd * dt
+            seguindo.id.yspd = seguindo.id.yspd + math.sin(seguindo.id.direction) * boolToInt(love.keyboard.isDown("up")) * seguindo.id.acceleration * simSpd * dt
 
-        local randx = (love.math.random() - .5) * 50 / cam.zoom
-        local randy = (love.math.random() - .5) * 50 / cam.zoom
-
-        nBola(.1, mousex + randx, mousey + randy, 0, 0)
-    end 
-    if (love.mouse.isDown(2)) then
-        if (placingObject == false) then
-            placingObject = true
-            mira.iniX = mousex
-            mira.iniY = mousey
+            if direcaoNave.value == 1 then
+                seguindo.id.direction = direction(0, 0, seguindo.id.xspd, seguindo.id.yspd)
+            elseif direcaoNave.value == 2 then
+                seguindo.id.direction = direction(seguindo.id.xspd, seguindo.id.yspd, 0, 0)
+            end
         end
     end
-    if (placingObject == true) then
-        pause = true
 
-        local dist = distance(mira.iniX, mira.iniY, mousex, mousey)
-
-        mira.x = mira.iniX + lenx(mousex, mira.iniX, dist)
-        mira.y = mira.iniY + leny(mousey, mira.iniY, dist)
-
-        local fixed = false
-
-        if (dist == 0) then
-            fixed = true
+    --resetar
+    if (love.keyboard.isDown("tab")) then
+        for i = 0, #Objects.list, 1 do
+            Objects.list[i] = nil
         end
+    end 
 
-        if not(love.mouse.isDown(2)) then
-            local xspd = clamp(lenx(mousex, mira.iniX, dist) * dist / 2, -2, 2)
-            local yspd = clamp(leny(mousey, mira.iniY, dist) * dist / 2, -2, 2)
-            if (fixed == true) then xspd = 0 yspd = 0 end
-            nBola(mass, mousex, mousey, xspd, yspd, fixed)
-            pause = false
-            placingObject = false
+    --adcionar asteroides
+    if (not menu.focus and not menuSimulacao.focus and not naveMenu.focus) then
+        if (love.mouse.isDown(1)) then
+
+            local randx = (love.math.random() - .5) * 50 / cam.zoom
+            local randy = (love.math.random() - .5) * 50 / cam.zoom
+
+            Objects:newAsteroid(mousex + randx, mousey + randy, 0, 0, Objects.list)
+        end 
+        if (love.mouse.isDown(2)) then
+            if (not placingObject) then
+                placingObject = true
+                mira.iniX = love.mouse.getX()
+                mira.iniY = love.mouse.getY()
+            end
+        end
+        if (placingObject) then
+            pause = true
+
+            local dist = distance(mira.iniX, mira.iniY, mousex, mousey)
+
+            mira.x = mira.iniX + lenx(mousex, mira.iniX, dist)
+            mira.y = mira.iniY + leny(mousey, mira.iniY, dist)
+
+            local fixed = false
+
+            if (dist == 0) then
+                fixed = true
+            end
+
+            if not(love.mouse.isDown(2)) then
+                local xspd = clamp(lenx(mousex, mira.iniX, dist) * dist / 2, -2, 2)
+                local yspd = clamp(leny(mousey, mira.iniY, dist) * dist / 2, -2, 2)
+                if (fixed == true) then xspd = 0 yspd = 0 end
+                --Objects:newObject(mass, mousex, mousey, xspd, yspd, Objects.list, fixed)
+                pause = false
+                placingObject = false
+            end
         end
     end
 
@@ -279,8 +342,37 @@ function love.draw()
     local miny = cam.y - ch
     local maxy = cam.y + ch
 
+    local lightPositions = {
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0},
+        {-1, -1, 0}
+    }
+
+    local lightColors = {
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0},
+        {0, 0, 0}
+    }
+
+    love.graphics.setCanvas(canvas)
+    love.graphics.clear()
+
     --desenhar objetos
-    for i, v in ipairs(bolas) do
+    for i, v in ipairs(Objects.list) do
 
         --calcular posição na tela
         local x = normal(v.x, minx, maxx) * window.lar
@@ -299,21 +391,78 @@ function love.draw()
         end
 
         --desenhar objeto
-        love.graphics.setColor(v.cor.r, v.cor.g, v.cor.b, 1)
-        love.graphics.circle("fill", x, y, clamp((v.massa / v.densidade * 3.14) * cam.zoom, 1, 999999)) 
+        local volumeMassaTela = clamp((v.massa / v.densidade * 3.14) * cam.zoom, 1, 999999)
+        local volumeAtmosferaTela = clamp(((v.massa + v.atmosfera) / v.densidade * 3.14) * cam.zoom, 1, 999999)
+        if (v.tipo ~= "Nave espacial") then
+            --desenhar atmosfera
+            love.graphics.setColor(v.atmosphereColor.r, v.atmosphereColor.g, v.atmosphereColor.b, .5)
+            love.graphics.circle("line", x, y, volumeAtmosferaTela)
+            love.graphics.setColor(v.atmosphereColor.r, v.atmosphereColor.g, v.atmosphereColor.b, .4)
+            love.graphics.circle("fill", x, y, volumeAtmosferaTela)
+
+            --desenhar objeto
+            love.graphics.setColor(v.cor.r, v.cor.g, v.cor.b, 1)
+            love.graphics.circle("fill", x, y, volumeMassaTela) 
+
+            if (v.luminous > 0) then
+                for i = 1, #lightPositions, 1 do
+                    if (lightPositions[i][1] == -1) then
+                        lightPositions[i][1] = x
+                        lightPositions[i][2] = y
+                        lightPositions[i][3] = volumeMassaTela*3.14*v.luminous
+
+                        lightColors[i][1] = v.cor.r
+                        lightColors[i][2] = v.cor.g
+                        lightColors[i][3] = v.cor.b
+                        break
+                    end
+                end
+            end
+        else
+            love.graphics.setColor(1, 1, 1, 1)
+            local size = clamp(volumeMassaTela * 10, 5, 999999)
+            volumeMassaTela = 10
+            love.graphics.polygon("fill",
+                x + math.cos(v.direction) * size, y + math.sin(v.direction) * size,
+                x + math.sin(v.direction)/3 * size, y - math.cos(v.direction)/3 * size,
+                x - math.sin(v.direction)/3 * size, y + math.cos(v.direction)/3 * size
+            )
+
+        end
+
+        --clique para seguir o objeto
+        if (circleCollision(x, y, love.mouse.getX(), love.mouse.getY(), volumeMassaTela))then
+            love.graphics.circle("line", x, y, volumeMassaTela + 5)
+            if (love.mouse.isDown(3))then
+                seguindo.id = v
+            end
+        end
     end
-    
+    love.graphics.setColor(1, 1, 1, 1)
     --desenhar mira
     if (placingObject == true) then
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.line(love.mouse.getX(), love.mouse.getY(), mira.x, mira.y)
     end
 
+    love.graphics.setShader(shader)
+
+    if (shader:hasUniform("lightPos")) then 
+        shader:send("lightPos", unpack(lightPositions))
+        shader:send("lightColor", unpack(lightColors))
+    end
+
+    love.graphics.setCanvas(nil)
+
+    love.graphics.draw(canvas, 0, 0, 0, 1, 1)
+
+    love.graphics.setShader(nil)
+
     --dados do jogo
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.print("FPS: " .. tostring(love.timer.getFPS()), 10, 10)
     love.graphics.print("Time: " .. tostring(round(time)), 10, 30)
-    love.graphics.print("Objects: " .. tostring(#bolas), 10, 50)
+    love.graphics.print("Objects: " .. tostring(#Objects.list), 10, 50)
     love.graphics.print("Simulation Speed: " .. tostring(simSpd), 10, 70)
     love.graphics.print("Simulation Precision: " .. tostring(precision * 100) .. "%", 10, 90)
     love.graphics.print("Coordinates: " .. tostring(round(cam.x)) .. " x " .. tostring(round(cam.y)), 10, 110)
@@ -322,108 +471,19 @@ function love.draw()
     if (seguindo.id ~= nil) then
         love.graphics.print("Following type: " .. seguindo.id.tipo, 10, 170)
         love.graphics.print("Following mass: " .. seguindo.id.massa, 10, 190)
-        love.graphics.print("Following density: " .. seguindo.id.densidade, 10, 210)
-        love.graphics.print("Following volume: " .. tostring(seguindo.id.massa / seguindo.id.densidade * 3.14), 10, 230)
+        love.graphics.print("Following atmosphere: " .. seguindo.id.atmosfera, 10, 210)
+        love.graphics.print("Following density: " .. seguindo.id.densidade, 10, 230)
+        love.graphics.print("Following volume: " .. tostring(seguindo.id.massa / seguindo.id.densidade * 3.14), 10, 250)
+        love.graphics.print("Following Speed: " .. tostring(distance(0, 0, seguindo.id.xspd, seguindo.id.yspd)), 10, 270)
+        love.graphics.print("Following Luminous: " .. tostring(seguindo.id.luminous), 10, 290)
+        love.graphics.print("Following Temperature: " .. tostring(seguindo.id.temperature), 10, 310)
+        love.graphics.print("Following color:\nr: " .. tostring(seguindo.id.cor.r) .. "\ng: " .. tostring(seguindo.id.cor.g) .. "\nb: " .. tostring(seguindo.id.cor.b), 10, 330)
     end
-end
 
-function nBola(massa, x, y, xspd, yspd, fixed)
-    local bola = {}
-    bola.id = id
-    bola.massa = massa
-    bola.densidade = 1
-    bola.tipo   = nil
-    bola.cor = {}
-    bola.cor.r = .7
-    bola.cor.g = .1
-    bola.cor.b = .2
-    bola.x = x
-    bola.y = y
-    bola.xspd = xspd
-    bola.yspd = yspd
-    bola.fixed = fixed
+    menu:draw()
+    menuSimulacao:draw()
+    naveMenu:draw()
 
-    bola.tailX = {x}
-    bola.tailY = {y}
-    bola.tailTime = 1
-
-    id = id + 1
-
-    bolaSpecs(bola)
-
-    table.insert(bolas, bola)
-end
-
-function bolaSpecs(index)
-    local terraMassa = 1
-    local solMassa = 80
-
-    --calcular massa e tipo do corpo celeste
-    if (index.densidade >= 255) or (index.tipo == "buraco negro") then index.tipo = "buraco negro"
-    elseif (index.densidade <= .15) or (index.tipo == "anã branca") then index.tipo = "anã branca"
-    elseif (index.massa >= solMassa * 10) or (index.densidade <= .25) then index.tipo = "gigante azul"
-    elseif (index.massa >= solMassa * 7) or (index.densidade <= .5) then index.tipo = "gigante vermelha"
-    elseif (index.massa >= solMassa) then index.tipo = "estrela madura"
-    elseif (index.massa >= terraMassa * 40) then index.tipo = "anã marrom"
-    elseif (index.massa >= terraMassa * 15) then index.tipo = "gigante" 
-    elseif (index.massa >= terraMassa) then index.tipo = "planeta"
-    else index.tipo = "asteroide" end
-
-    if (index.densidade <= .01) then index.tipo = "nebulosa" end
-
-    if (index.tipo == "anã branca") then  --estágio final
-        index.cor.r = 1
-        index.cor.g = 1
-        index.cor.b = 1
-        index.densidade = 80
-        if (index.massa >= solMassa * 12) then
-            index.tipo = "buraco negro"
-            index.cor.r = .3
-            index.cor.g = .3
-            index.cor.b = .3
-            index.densidade = 512
-        end
-    elseif (index.tipo == "gigante azul") then
-        index.cor.r = .6
-        index.cor.g = .6
-        index.cor.b = 1
-        --index.densidade = .45
-    elseif (index.tipo == "gigante vermelha") then     --início do estágio de gigante vermelha
-        index.cor.r = 1
-        index.cor.g = .25
-        index.cor.b = 0
-        --index.densidade = .6
-    elseif (index.tipo == "estrela madura") then         --fase madura da estrela
-        index.cor.r = 1
-        index.cor.g = 1
-        index.cor.b = 0
-        --index.densidade = .8
-    elseif (index.tipo == "anã marrom") then         --anã marrom ou protoestrela
-        index.cor.r = .5
-        index.cor.g = .25
-        index.cor.b = .25
-        index.densidade = .95
-    elseif (index.tipo == "gigante") then
-        index.cor.r = .75
-        index.cor.g = .5
-        index.cor.b = .25
-        index.densidade = .95
-    elseif (index.tipo == "planeta") then
-        index.cor.r = .2
-        index.cor.g = .5
-        index.cor.b = .7
-        index.densidade = 1
-    elseif (index.tipo == "asteroide") then
-        index.cor.r = .5
-        index.cor.g = .1
-        index.cor.b = .2
-        index.densidade = 1.5
-    elseif (index.tipo == "nebulosa") then
-        index.cor.r = .5
-        index.cor.g = .5
-        index.cor.b = .5
-        index.densidade = .0001
-    end
 end
 
 function love.keypressed(key)

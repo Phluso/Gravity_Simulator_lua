@@ -1,19 +1,13 @@
 function input(_key)
-
-    if (love.keyboard.isDown(_key)) then
-        return 1
-    else
-        return 0
-    end
+    return (love.keyboard.isDown(_key))
 
 end
 
 function sign(n)
     if (n < 0) then
         return -1
-    else
-        return 1
     end
+    return 1
 end
 
 function fract(n)
@@ -26,16 +20,17 @@ end
 
 function round(n)
     if (fract(n) < .5) then     --arredondar pra baixo
-        n = math.floor(n);
-    else                        --arredondar pra cima
-        n = math.ceil(n);
-    end
-
-    return n;
+        return math.floor(n);
+    end                         --arredondar pra cima
+    return math.ceil(n);
 end
 
 function clamp(n, min, max)
-    if (n < min) then n = min elseif n > max then n = max end
+    if (n < min) then 
+        return min
+    elseif (n > max) then 
+        return max
+    end
     return n
 end
 
@@ -50,15 +45,15 @@ function distance(x1, y1, x2, y2)
 end
 
 function collision(x, y, x1, y1, x2, y2)
-    if (x >= x1) and (x <= x2) and (y >= y1) and (y <= y2) then return true else return false end
+    return ((x >= x1) and (x <= x2) and (y >= y1) and (y <= y2))
 end
 
-function circleColision(x, y, circlex, circley, radius)
-    if (distance(x, y, circlex, circley) <= radius) then
-        return true
-    else
-        return false
-    end
+function circleCollision(x, y, circlex, circley, radius)
+    return (distance(x, y, circlex, circley) <= radius)
+end
+
+function twoCircleCollision(x1, y1, x2, y2, radius1, radius2)
+    return (distance(x1, y1, x2, y2) <= radius1 + radius2)
 end
 
 function lenx(x1, x2, distance)
@@ -77,12 +72,13 @@ end
 
 function newCamera(x, y, width, height, zoom)
     -- create a camera that is stored in a variable
-    local camera = {}
-    camera.x        = x         or 0
-    camera.y        = y         or 0
-    camera.width    = width     or 720
-    camera.height   = height    or 360
-    camera.zoom     = zoom      or 1
+    local camera = {
+        x        = x         or 0,
+        y        = y         or 0,
+        width    = width     or 720,
+        height   = height    or 360,
+        zoom     = zoom      or 1
+    }
 
     return camera
 end
@@ -90,10 +86,53 @@ end
 function mouseToCamera(camera)
     -- return the mouse position relative to the camera
     local mouse = {}
-    mouse.x = ((love.mouse.getX()) / (window.lar) - .5) * cam.width + cam.x
-    mousey = ((love.mouse.getY()) / (window.alt) - .5) * cam.height + cam.y
+        mouse.x = ((love.mouse.getX()) / (window.lar) - .5) * camera.width + camera.x
+        mouse.y = ((love.mouse.getY()) / (window.alt) - .5) * camera.height + camera.y
+
+    return mouse
 end
 
 function drawInCamera(object, camera)
     -- draw a object or a list of objects in the screen with a position relative to the camera
+end
+
+libClick = {
+    leftClick = -1,
+    rightClick = -1,
+    middleClick = -1
+}
+
+
+function leftClick()
+    if (love.mouse.isDown(1))then
+        if (libClick.leftClick == -1) then
+            libClick.leftClick = time
+        end
+        return (time == libClick.leftClick)
+    end
+    return false
+end
+
+function rightClick()
+    if (love.mouse.isDown(2))then
+        if (libClick.rightClick == -1) then
+            libClick.rightClick = time
+        end
+        return (time == libClick.rightClick)
+    end
+    return false
+end
+
+function middleClick()
+    if (love.mouse.isDown(3))then
+        if (libClick.middleClick == -1) then
+            libClick.middleClick = time
+        end
+        return (time == libClick.middleClick)
+    end
+    return false
+end
+
+function boolToInt(bool)
+    return bool and 1 or 0
 end
