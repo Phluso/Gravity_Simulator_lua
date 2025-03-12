@@ -34,6 +34,8 @@ function clamp(n, min, max)
     return n
 end
 
+
+
 function direction(x1, y1, x2, y2) 
     return math.atan2(y2 - y1, x2 - x1);
 end
@@ -56,12 +58,14 @@ function twoCircleCollision(x1, y1, x2, y2, radius1, radius2)
     return (distance(x1, y1, x2, y2) <= radius1 + radius2)
 end
 
-function lenx(x1, x2, distance)
-    return (x2 - x1) / distance
+function lenx(x1, x2, hipotenusa)
+    --retorna o cateto adjacente
+    return (x2 - x1) / hipotenusa
 end
 
-function leny(y1, y2, distance)
-    return (y2 - y1) / distance
+function leny(y1, y2, hipotenusa)
+    --retorna o cateto oposto
+    return (y2 - y1) / hipotenusa
 end
 
 function normal(n, min, max)
@@ -85,11 +89,20 @@ end
 
 function mouseToCamera(camera)
     -- return the mouse position relative to the camera
-    local mouse = {}
-        mouse.x = ((love.mouse.getX()) / (window.lar) - .5) * camera.width + camera.x
-        mouse.y = ((love.mouse.getY()) / (window.alt) - .5) * camera.height + camera.y
+    local mouse = {
+        x = ((love.mouse.getX()) / (window.lar) - .5) * camera.width + camera.x,
+        y = ((love.mouse.getY()) / (window.alt) - .5) * camera.height + camera.y
+    }
 
     return mouse
+end
+
+function positionToCamera(x, y, camera)
+    local position = {
+        x = (x / (window.lar) - .5) * camera.width + camera.x,
+        y = (y / (window.alt) - .5) * camera.height + camera.y
+    }
+    return position
 end
 
 function drawInCamera(object, camera)
@@ -102,12 +115,12 @@ libClick = {
     middleClick = -1
 }
 
-
 function leftClick()
     if (love.mouse.isDown(1))then
         if (libClick.leftClick == -1) then
             libClick.leftClick = time
         end
+        libClick.leftClick = -1
         return (time == libClick.leftClick)
     end
     return false
@@ -118,6 +131,7 @@ function rightClick()
         if (libClick.rightClick == -1) then
             libClick.rightClick = time
         end
+        libClick.rightClick = -1
         return (time == libClick.rightClick)
     end
     return false
@@ -130,6 +144,7 @@ function middleClick()
         end
         return (time == libClick.middleClick)
     end
+    libClick.middleClick = -1
     return false
 end
 

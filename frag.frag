@@ -1,5 +1,3 @@
-#pragma language glsl3;
-
 uniform vec3 lightPos[10];
 uniform vec3 lightColor[10];
 
@@ -13,9 +11,9 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
             lightPos[i].y
         )));
 
-        vec4 color = vec4(vec3(lightColor[i].rgb), 1);
+        color = vec4(vec3(lightColor[i].rgb), 1);
         texturecolor = mix(texturecolor, color, lightIntensity);
     }
-
+    
     return texturecolor;
 }

@@ -1,16 +1,18 @@
 Objects = {
-    list = {}
+    list = {}, 
+    id = 0
 }
 Objects.__index = Objects
 
 function Objects:newObject(mass, density, atmosphere, x, y, xspd, yspd, fixed, fusion, luminous, temperature)
     local object = {
-        id = id,
-        massa = mass,
-        atmosfera = atmosphere or 0,
-        densidade = density,
-        tipo   = nil,
-        cor = {
+        id              = Objects.id,
+        massa           = mass or 1,
+        atmosfera       = atmosphere or 0,
+        hasAtmosphere   = (atmosphere ~= nil and atmosphere > 0) or false,
+        densidade       = density or 0,
+        tipo            = nil,
+        cor             = {
             r = .7,
             g = .1,
             b = .2,
@@ -20,20 +22,20 @@ function Objects:newObject(mass, density, atmosphere, x, y, xspd, yspd, fixed, f
             g = math.random(),
             b = math.random()
         },
-        x = x,
-        y = y,
-        xspd = xspd,
-        yspd = yspd,
-        fixed = fixed or false,
-        nuclearFusion = fusion or false,
-        luminous = luminous or 0,
-        temperature = temperature or 0,
-        tailX = {x},
-        tailY = {y},
-        tailTime = 1
+        x               = x or 0,
+        y               = y or 0,
+        xspd            = xspd or 0,
+        yspd            = yspd or 0,
+        fixed           = fixed or false,
+        nuclearFusion   = fusion or false,
+        luminous        = luminous or 0,
+        temperature     = temperature or 0,
+        tailX           = {x},
+        tailY           = {y},
+        tailTime        = 1
     }
     
-    id = id + 1
+    Objects.id = Objects.id + 1
 
     setmetatable(object, Objects)
     object:specs()
@@ -49,7 +51,7 @@ function Objects:newBlackHole(x, y, xspd, yspd)
 end
 
 function Objects:newNebulosa(x, y)
-    Objects:newObject(1e-100, 0, .015, x, y, 0, 0, true, false, 0, 0)
+    Objects:newObject(0, 0, .015, x, y, 0, 0, true, false, 0, 0)
 end
 
 function Objects:newNebulosaClouds(x, y, quantity, _radius)
@@ -68,7 +70,7 @@ function Objects:newRedGiant(x, y, xspd, yspd)
 end
 
 function Objects:newStar(x, y, xspd, yspd)
-    Objects:newObject(100, 1, -1, x, y, xspd, yspd, false, true, 1, 4000)
+    Objects:newObject(100, 1, 0, x, y, xspd, yspd, false, true, 1, 4000)
 end
 
 function Objects:newAsteroid(x, y, xspd, yspd)
@@ -79,9 +81,9 @@ function Objects:newPlanet(x, y, xspd, yspd)
     Objects:newObject(10, 1, 2, x, y, xspd, yspd, false, false, false)
 end
 
-function Objects:newSpaceship(x, y)
+function Objects:newSpaceship(x, y, xspd, yspd)
     local spaceShip = {
-        id = id,
+        id = Objects.id,
         tipo = "Nave espacial",
         massa = .1,
         densidade = 1,
@@ -89,14 +91,15 @@ function Objects:newSpaceship(x, y)
         y = y,
         acceleration = .0005,
         rotationSpeed = .3,
-        xspd = 0,
-        yspd = 0,
+        xspd = xspd or 0,
+        yspd = yspd or 0,
         fixed = false,
-        direction = 0,
+        direction = direction(0, 0, xspd, yspd) or 0,
         tailX = {x},
         tailY = {y},
         tailTime = 1,
-        atmosfera = -1,
+        atmosfera = 0,
+        hasAtmosphere = false,
         cor = {
             r = .7,
             g = .1,
@@ -108,7 +111,7 @@ function Objects:newSpaceship(x, y)
             b = 0
         }
     }
-    id = id + 1
+    Objects.id = Objects.id + 1
     
     table.insert(Objects.list, spaceShip)
 end
@@ -127,10 +130,11 @@ function Objects:specs()
     elseif (self.temperature >= 10000 or self.densidade <= .015) then 
         self.tipo = "anã branca"
 --estrela
-    elseif (self.massa >= 80 and self.densidade <= 5) then 
+    elseif (self.massa + self.atmosfera >= 60 and self.densidade <= 5) then 
+        self.massa = self.massa + self.atmosfera
         self.tipo = "estrela"
 --anã marrom
-    elseif (self.massa >= 40) then 
+    elseif (self.massa + self.atmosfera >= 30) then 
         self.tipo = "anã marrom"
 --gigante gasoso
     elseif (self.atmosfera >= self.massa) then 
@@ -146,14 +150,14 @@ function Objects:specs()
     if (self.tipo == "anã branca") then  --estágio final
         self.densidade = 80
         self.nuclearFusion = false
-        self.atmosfera = -1
         self.luminous = 3
         self.cor.r = 1
         self.cor.g = 1
         self.cor.b = 1
         self.temperature = 100000
         self.nuclearFusion = false
-        self.atmosfera = -1
+        self.atmosfera = 0
+        self.hasAtmophere = false
     elseif (self.tipo == "buraco negro") then
         self.cor.r = .3
         self.cor.g = .3
@@ -161,7 +165,8 @@ function Objects:specs()
         self.densidade = 512
         self.nuclearFusion = false
         self.luminous = 0
-        self.atmosfera = -1
+        self.atmosfera = 0
+        self.hasAtmophere = false
     elseif (self.tipo == "estrela") then         --fase de estrela
 
         local colors = {
@@ -188,7 +193,8 @@ function Objects:specs()
         
         self.nuclearFusion = true
         self.temperature = clamp(self.temperature, 3500, 999999)
-        self.atmosfera = -1
+        self.atmosfera = 0
+        self.hasAtmophere = false
         self.densidade = 1.15 - normal(self.temperature, 3500, 10000)
         self.luminous = 1 + self.massa / 10000
         self.cor.r = lerp(colors[stage][1], colors[stage+1][1], normal(self.temperature, minTemp, maxTemp))
@@ -200,25 +206,30 @@ function Objects:specs()
         self.cor.b = .25
         self.densidade = .95
         self.luminous = .8
+        self.hasAtmophere = true
     elseif (self.tipo == "gigante gasoso") then
         self.cor.r = .75
         self.cor.g = .5
         self.cor.b = .25
         self.densidade = .95
+        self.hasAtmophere = true
     elseif (self.tipo == "planeta") then
         self.cor.r = .2
         self.cor.g = .5
         self.cor.b = .7
         self.densidade = 1
+        self.hasAtmophere = true
     elseif (self.tipo == "asteroide") then
         self.cor.r = .5
         self.cor.g = .1
         self.cor.b = .2
         self.densidade = 1.5
+        self.hasAtmophere = true
     elseif (self.tipo == "nebulosa") then
         self.cor.r = .5
         self.cor.g = .5
         self.cor.b = .5
         self.densidade = .0001
+        self.hasAtmophere = true
     end
 end
