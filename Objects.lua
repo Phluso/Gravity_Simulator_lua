@@ -99,6 +99,8 @@ function Objects:newSpaceship(x, y, xspd, yspd)
         tailY = {y},
         tailTime = 1,
         atmosfera = 0,
+        temperature = 0,
+        luminous = 0,
         hasAtmosphere = false,
         cor = {
             r = .7,
@@ -112,7 +114,7 @@ function Objects:newSpaceship(x, y, xspd, yspd)
         }
     }
     Objects.id = Objects.id + 1
-    
+    setmetatable(spaceShip, Objects)
     table.insert(Objects.list, spaceShip)
 end
 

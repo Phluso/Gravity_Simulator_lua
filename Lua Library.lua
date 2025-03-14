@@ -34,8 +34,6 @@ function clamp(n, min, max)
     return n
 end
 
-
-
 function direction(x1, y1, x2, y2) 
     return math.atan2(y2 - y1, x2 - x1);
 end
@@ -56,16 +54,6 @@ end
 
 function twoCircleCollision(x1, y1, x2, y2, radius1, radius2)
     return (distance(x1, y1, x2, y2) <= radius1 + radius2)
-end
-
-function lenx(x1, x2, hipotenusa)
-    --retorna o cateto adjacente
-    return (x2 - x1) / hipotenusa
-end
-
-function leny(y1, y2, hipotenusa)
-    --retorna o cateto oposto
-    return (y2 - y1) / hipotenusa
 end
 
 function normal(n, min, max)

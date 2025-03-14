@@ -217,8 +217,8 @@ function love.update(dt)
             pause = true
 
             local dist = distance(mira.iniX, mira.iniY, mousex, mousey)
-            mira.x = mira.iniX + lenx(mousex, mira.iniX, dist)
-            mira.y = mira.iniY + leny(mousey, mira.iniY, dist)
+            mira.x = mira.iniX + (mousex - mira.iniX)
+            mira.y = mira.iniY + (mousey - mira.iniY)
 
             local o = objectRadio.value
 
