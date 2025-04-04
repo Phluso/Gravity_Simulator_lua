@@ -5,11 +5,11 @@ require "physics"
 
 function love.load()
     
-    love.window.setFullscreen(true)
+    love.window.setFullscreen(false)
 
     over = -1
 
-    shader = love.graphics.newShader("frag.frag", "vert.vert")
+    shader = love.graphics.newShader("render.frag", "vert.vert")
     canvas = love.graphics.newCanvas(love.graphics.getWidth(), love.graphics.getHeight())
 
     window = {
@@ -35,7 +35,7 @@ function love.load()
     {"Estrela", {massa = 100, densidade = 1, atmosfera = 0, fusaoNuclear = true, temperatura = 4000}},
     {"Planeta", {massa = 2, densidade = 1, atmosfera = 1, fusaoNuclear = false, temperatura = 0}}, 
     {"Asteroide", {massa = .2, densidade = 1, atmosfera = 0, fusaoNuclear = false, temperatura = 0}}, 
-    {"Nave espacial", {tipo = "nave", massa = .1, atmosfera = 0}}}, 7)
+    {"Nave espacial", {tipo = "nave", massa = .1, atmosfera = 0, fixed = false}}}, 7)
 
     menu:addRow({Menu:label("Tipo de objeto")})
     menu:addRow({objectRadio.option[1]})
@@ -176,14 +176,16 @@ function love.update(dt)
 
         if (seguindo.tipo == "Nave espacial") then
             seguindo.acceleration = velocidadeNave.value / 200000
-            seguindo.direction = seguindo.direction + (boolToInt(love.keyboard.isDown("right")) - boolToInt(love.keyboard.isDown("left"))) * seguindo.rotationSpeed * dt
+            seguindo.rotationAcc = lerp(seguindo.rotationAcc, 0, dt * simSpd)
+            seguindo.rotationAcc = seguindo.rotationAcc + (boolToInt(love.keyboard.isDown("right")) - boolToInt(love.keyboard.isDown("left"))) * seguindo.rotationSpeed * dt * simSpd
+            seguindo.direction = seguindo.direction + seguindo.rotationAcc
             seguindo.xspd = seguindo.xspd + math.cos(seguindo.direction) * boolToInt(love.keyboard.isDown("up")) * seguindo.acceleration * simSpd * dt
             seguindo.yspd = seguindo.yspd + math.sin(seguindo.direction) * boolToInt(love.keyboard.isDown("up")) * seguindo.acceleration * simSpd * dt
 
             if direcaoNave.value == 1 then
-                seguindo.direction = direction(0, 0, seguindo.xspd, seguindo.yspd)
+                seguindo.direction = lerp(seguindo.direction, direction(0, 0, seguindo.xspd, seguindo.yspd), dt)
             elseif direcaoNave.value == 2 then
-                seguindo.direction = direction(seguindo.xspd, seguindo.yspd, 0, 0)
+                seguindo.direction = lerp(seguindo.direction, direction(seguindo.xspd, seguindo.yspd, 0, 0), dt)
             end
         end
     end
@@ -222,31 +224,25 @@ function love.update(dt)
 
             local o = objectRadio.value
 
-            local fixed = false
-
-            if (dist == 0) then
-                fixed = true
-            end
-
             local oMass = o.massa + o.atmosfera
 
-            local xspd = lenx(mousex, mira.iniX, dist) * dist / 10
-            local yspd = leny(mousey, mira.iniY, dist) * dist / 10
+            local xspd = (mira.iniX - mousex) * dist / 10
+            local yspd = (mira.iniY - mousey) * dist / 10
             
             local spd = {x = xspd, y = yspd}
             local pos = {x = mousex, y = mousey}
             
             for i = 1, 1000, 1 do
                 for a = 0, 100, i do
-                for j, obj in ipairs(Objects.list) do
-                    local objMass = obj.massa + obj.atmosfera
-                    local atracao = calcAtracao(objMass, oMass, obj.x, obj.y, pos.x, pos.y)
-                    local acc = calcAceleracao(pos.x, pos.y, obj.x, obj.y, atracao)
+                    for j, obj in ipairs(Objects.list) do
+                        local objMass = obj.massa + obj.atmosfera
+                        local atracao = calcAtracao(objMass, oMass, obj.x, obj.y, pos.x, pos.y)
+                        local acc = calcAceleracao(pos.x, pos.y, obj.x, obj.y, atracao)
 
-                    spd.x = spd.x + acc.x
-                    spd.y = spd.y + acc.y
+                        spd.x = spd.x + acc.x
+                        spd.y = spd.y + acc.y
+                    end
                 end
-            end
 
                 pos.x = pos.x + spd.x / oMass * dt
                 pos.y = pos.y + spd.y / oMass * dt
@@ -257,7 +253,6 @@ function love.update(dt)
             end
 
             if not(love.mouse.isDown(2)) then
-                if (fixed == true) then xspd = 0 yspd = 0 end
                 pause = false
                 placingObject = false
 
@@ -325,6 +320,10 @@ function love.draw()
     love.graphics.setCanvas(canvas)
     love.graphics.clear()
 
+    love.graphics.setShader(shader)
+    
+    local positions = {}
+
     --desenhar objetos
     for i, v in ipairs(Objects.list) do
 
@@ -347,7 +346,10 @@ function love.draw()
         --desenhar objeto
         local volumeMassaTela = clamp((v.massa / v.densidade * 3.14) * cam.zoom, 1, 999999)
         local volumeAtmosferaTela = clamp(((v.massa + v.atmosfera) / v.densidade * 3.14) * cam.zoom, 1, 999999)
-        if (v.tipo ~= "Nave espacial") then
+
+            table.insert(positions, {v.x, v.y, v.massa / v.densidade, v.atmosfera or v.luminous or 0})
+
+            --[[
             --desenhar atmosfera
             love.graphics.setColor(v.atmosphereColor.r, v.atmosphereColor.g, v.atmosphereColor.b, .5)
             love.graphics.circle("line", x, y, volumeAtmosferaTela)
@@ -357,7 +359,7 @@ function love.draw()
             --desenhar objeto
             love.graphics.setColor(v.cor.r, v.cor.g, v.cor.b, 1)
             love.graphics.circle("fill", x, y, volumeMassaTela) 
-
+            ]]
             --checa se o mouse está sobre o objeto
             if (over == v.id) then
                 love.graphics.circle("line", x, y, volumeMassaTela + 5)
@@ -376,6 +378,7 @@ function love.draw()
                     end
                 end
             end
+        --[[
         else
             love.graphics.setColor(1, 1, 1, 1)
             local size = clamp(volumeMassaTela * 10, 5, 999999)
@@ -386,6 +389,7 @@ function love.draw()
                 x - math.sin(v.direction)/3 * size, y + math.cos(v.direction)/3 * size
             )
         end
+        ]]
     end
 
     --desenhar mira
@@ -415,12 +419,11 @@ function love.draw()
             love.graphics.line(x1, y1, x2, y2)
         end
     end
-
-    love.graphics.setShader(shader)
-
-    if (shader:hasUniform("lightPos")) then 
-        shader:send("lightPos", unpack(lightPositions))
-        shader:send("lightColor", unpack(lightColors))
+    if (shader:hasUniform("resolution")) then 
+        --shader:send("lightPos", unpack(lightPositions))
+        shader:send("objPos", unpack(positions))
+        shader:send("resolution", {love.graphics.getWidth(), love.graphics.getHeight()})
+        print(love.graphics.getWidth())
     end
 
     love.graphics.setCanvas(nil)

@@ -16,7 +16,7 @@ function physics(speed, dt)
                         seguindo = v
                     end
                 end
-                if (not v.fixed and math.random() <= precision) then
+                if (math.random() <= precision) then
                     --adcionar posição nas arrays de rastro
                     if (rastro.value) then
                         v.tailTime = v.tailTime - dt
@@ -49,7 +49,6 @@ function physics(speed, dt)
                         if (math.random() < precision) then    --limitar interações
                             if (v.id ~= u.id) then 
                                 local atracao = calcAtracao(u.massa + u.atmosfera, v.massa + v.atmosfera, v.x, v.y, u.x, u.y)
-                                if (u.fixed) then atracao = 0 end
                                 local aceleracao = calcAceleracao(v.x, v.y, u.x, u.y, atracao)
                                 v.xspd = v.xspd + aceleracao.x
                                 v.yspd = v.yspd + aceleracao.y
@@ -63,6 +62,7 @@ function physics(speed, dt)
                                             u.atmosfera = u.atmosfera + v.atmosfera
                                             v.atmosfera = 0
                                             if (seguindo == v) then seguindo = u end
+                                            if (v.fixed) then u.fixed = true end
                                             --remove objeto menos massivo da lista
                                             table.remove(Objects.list, i)
                                             u:specs()
@@ -99,9 +99,11 @@ function physics(speed, dt)
                             end
                         end
                     end
-                    --mover objetos
-                    v.x = v.x + v.xspd / (v.massa + v.atmosfera) * dt
-                    v.y = v.y + v.yspd / (v.massa + v.atmosfera) * dt
+                    if (not v.fixed) then
+                        --mover objetos
+                        v.x = v.x + v.xspd / (v.massa + v.atmosfera) * dt
+                        v.y = v.y + v.yspd / (v.massa + v.atmosfera) * dt
+                    end
                 end
             end
         end
@@ -113,9 +115,10 @@ function calcAtracao(massa1, massa2, x1, y1, x2, y2)
 end
 
 function calcAceleracao(x1, y1, x2, y2, forca)
+    local dist = distance(x1, y1, x2, y2)
     local acc = {
-        x = lenx(x1, x2, distance(x1, y1, x2, y2)) * forca,
-        y = lenx(y1, y2, distance(x1, y1, x2, y2)) * forca
+        x = (x2 - x1) / dist * forca,
+        y = (y2 - y1) / dist * forca
     }
     return acc
 end
